@@ -46,7 +46,7 @@ class Textbox:
     def keyDown(self, key_num):
         try:
             # 删除键
-            if key_num == 8:
+            if key_num == pygame.K_BACKSPACE:
                 if self.text[-1] not in string.ascii_letters:
                     if self.state == 0 and self.text != "":
                         self.text = self.text[:-1]
@@ -71,40 +71,54 @@ class Textbox:
                         self.state = 0
                 return None
             # shift键
-            if key_num in (304, 0):
+            if key_num in (pygame.K_RSHIFT, pygame.K_LSHIFT):
                 if self.language == "Chinese":
                     self.language = "English"
                 else:
                     self.language = "Chinese"
                 return None
             # 选词
-            if key_num in (49, 50, 51, 52, 53):
+            if key_num in (pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5):
                 self.text = self.text[:len(self.text) - len(self.bufferText)]
                 self.bufferText = ""
                 self.text += self.words[key_num - 49]
                 self.state = 0
                 return None
             # 空格键
-            if key_num == 61:
+            if key_num == pygame.K_EQUALS:
                 if self.state == 0:
                     return None
-                words = dag(self.params, (self.bufferText,), path_num=5 * self.page)
-                for p in all_pinyin():
-                    if p.startswith(self.bufferText):
-                        words += dag(self.params, (self.bufferText,), path_num=5 * self.page)
-                limit_page = len(words) / 5
+                p = 1
+                limit_page = 0
+                while True:
+                    da = dag(self.params, (self.bufferText,), path_num=5 * p)
+                    if len(da) % 5 != 0:
+                        limit_page += len(da)
+                        break
+                    p += 1
+                if self.bufferText not in pinYinLang:
+                    for p in all_pinyin():
+                        if p.startswith(self.bufferText):
+                            p = 1
+                            while True:
+                                da = dag(self.params, (self.bufferText,), path_num=5 * p)
+                                if len(da) % 5 != 0:
+                                    limit_page += len(da)
+                                    break
+                                p += 1
+                limit_page = limit_page / 5
                 if limit_page % 1 != 0:
                     limit_page = math.ceil(limit_page)
                 if self.page != limit_page:
                     self.page += 1
                     self.words = self._hz2py(self.bufferText)
                 return None
-            if key_num == 45:
+            if key_num == pygame.K_MINUS:
                 if self.page != 1:
                     self.page -= 1
                     self.words = self._hz2py(self.bufferText)
                 return None
-            if key_num == 32:
+            if key_num == pygame.K_SPACE:
                 if self.state == 0:
                     self.text += " "
                 else:
@@ -113,23 +127,20 @@ class Textbox:
                     self.bufferText = ""
                     self.state = 0
                 return None
-            # 回车键
-            if key_num == 13:
-                pass
             # 大/小写键
-            if key_num == 301:
+            if key_num == pygame.K_CAPSLOCK:
                 self.caps = not self.caps
                 return None
             self.char = chr(key_num)
-            if self.language == "English" and not self.caps:
-                self.char = chr(key_num)
-                if self.char in string.ascii_lowercase:
-                    self.text += self.char
-                    return None
-            if self.language == "English" and self.caps:
+            if self.caps:
                 self.char = chr(key_num - 32)
                 if self.char in string.ascii_uppercase:
                     self.text += chr(key_num - 32)
+                    return None
+            if self.language == "English":
+                self.char = chr(key_num)
+                if self.char in string.ascii_lowercase:
+                    self.text += self.char
                     return None
             self.char = chr(key_num)
             if self.char in string.ascii_letters:
@@ -145,7 +156,7 @@ class Textbox:
 
     def _hz2py(self, pinyin):
         result = dag(self.params, (pinyin,), path_num=5 * self.page)
-        if pinyin.replace("u", "v") not in all_pinyin():
+        if pinyin not in all_pinyin():
             for p in all_pinyin():
                 if p.startswith(pinyin):
                     result += dag(self.params, (p,), path_num=5 * self.page)
